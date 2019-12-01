@@ -5,10 +5,12 @@ using UnityEngine.UI;
 
 public class OriginalManager : MonoBehaviourCustom
 {
+    Texture2D tex;
+    Image image;
     // Start is called before the first frame update
     void Start()
     {
-        StartCoroutine(DelayFlameEnd(() => { setupImage(); }));
+        image = GetComponent<Image>();
     }
 
     // Update is called once per frame
@@ -17,23 +19,14 @@ public class OriginalManager : MonoBehaviourCustom
         
     }
 
-    public void setupImage()
+    public void DrawImage()
     {
         int width = MainManager.width;
         int height = MainManager.height;
-        float pixelSize = MainManager.pixelSize;
-        float offsetX = -width * pixelSize / 2;
-        float offsetY = -width * pixelSize / 2;
-        for (int y = 0; y < MainManager.height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                GameObject pixel = Instantiate(MainManager.pixel, transform, this.gameObject) as GameObject;
-                pixel.GetComponent<RectTransform>().anchoredPosition = new Vector2(offsetX + x * pixelSize, offsetY + y * pixelSize);
-                pixel.GetComponent<RectTransform>().sizeDelta = new Vector2(pixelSize, pixelSize);
-                pixel.GetComponent<Image>().color = MainManager.imagePixels[y*MainManager.width+x];
-
-            }
-        }
+        tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
+        tex.filterMode = FilterMode.Point;
+        tex.SetPixels(MainManager.frames[MainManager.selectFrame].colors);
+        tex.Apply();
+        image.sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), Vector2.zero);
     }
 }

@@ -2,13 +2,18 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using System.IO;
 
 public class ResultManager : MonoBehaviour
 {
+    public bool enable4cdiff;
+    Texture2D tex;
+    Color[] colorSet;
+    Image image;
     // Start is called before the first frame update
     void Start()
     {
-        
+        image = GetComponent<Image>();
     }
 
     // Update is called once per frame
@@ -17,46 +22,82 @@ public class ResultManager : MonoBehaviour
         
     }
 
-    public void setupImage()
+    public void DrawImage()
     {
         int width = MainManager.width;
         int height = MainManager.height;
-        float pixelSize = MainManager.pixelSize;
-        float offsetX = -width * pixelSize / 2;
-        float offsetY = -width * pixelSize / 2;
-        Color[] colorSet = MainManager.colorSet;
-        int[,] idArray = new int[width*2,height*2];
-        string strOut = (width * 2).ToString() + "," + (height * 2).ToString();
+        colorSet = MainManager.colorSet;
+        tex = new Texture2D(width*2, height*2, TextureFormat.RGBA32, false);
+        tex.filterMode = FilterMode.Point;
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
             {
-                PixelSet pixelSet = MainManager.FindBetterColor(MainManager.imagePixels[y * MainManager.width + x]);
-                makePixel(offsetX, offsetY, x, y, 0, 0, pixelSize, colorSet[pixelSet.col[0]]);
-                makePixel(offsetX, offsetY, x, y, 0, 1, pixelSize, colorSet[pixelSet.col[1]]);
-                makePixel(offsetX, offsetY, x, y, 1, 0, pixelSize, colorSet[pixelSet.col[2]]);
-                makePixel(offsetX, offsetY, x, y, 1, 1, pixelSize, colorSet[pixelSet.col[3]]);
-                idArray[x * 2, y * 2] = pixelSet.col[0];
-                idArray[x * 2, y * 2 + 1] = pixelSet.col[1];
-                idArray[x * 2 + 1, y * 2] = pixelSet.col[2];
-                idArray[x * 2 + 1, y * 2 + 1] = pixelSet.col[3];
+                PixelSet pixelSet = new PixelSet();
+                if (enable4cdiff)
+                {
+                    pixelSet = MainManager.FourCdiff(MainManager.frames[MainManager.selectFrame].colors[y * MainManager.width + x]);
+                }
+                else
+                {
+                    pixelSet = MainManager.FindBetterColor(MainManager.frames[MainManager.selectFrame].colors[y * MainManager.width + x]);
+                }
+                tex.SetPixel(x * 2, y * 2, colorSet[pixelSet.col[0]]);
+                set4pixel(x, y, pixelSet);
             }
         }
-        for (int y = 0; y < height*2; y++)
+        tex.Apply();
+        image.sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), Vector2.zero);
+    }
+
+    public void set4pixel(int x, int y, PixelSet pixelSet)
+    {
+        tex.SetPixel(x * 2, y * 2, colorSet[pixelSet.col[0]]);
+        tex.SetPixel(x * 2 + 1, y * 2, colorSet[pixelSet.col[1]]);
+        tex.SetPixel(x * 2, y * 2 + 1, colorSet[pixelSet.col[2]]);
+        tex.SetPixel(x * 2 + 1, y * 2 + 1, colorSet[pixelSet.col[3]]);
+    }
+
+    public void export()
+    {
+        int width = MainManager.width;
+        int height = MainManager.height;
+        int frame = MainManager.frame;
+        colorSet = MainManager.colorSet;
+        int[,] idArray = new int[width * 2, height * 2];
+        string strOut = (width * 2).ToString() + "," + (height * 2).ToString() + "," + frame.ToString();
+        Debug.Log("Exporting"+width);
+        for (int f = 0; f < frame; f++)
         {
-            for (int x = 0; x < width*2; x++)
+            for (int y = 0; y < height; y++)
             {
-                strOut += "," + idArray[x, y].ToString();
+                for (int x = 0; x < width; x++)
+                {
+                    PixelSet pixelSet = new PixelSet();
+                    if (enable4cdiff)
+                    {
+                        pixelSet = MainManager.FourCdiff(MainManager.frames[f].colors[y * MainManager.width + x]);
+                    }
+                    else
+                    {
+                        pixelSet = MainManager.FindBetterColor(MainManager.frames[f].colors[y * MainManager.width + x]);
+                    }
+                    idArray[x * 2, y * 2] = pixelSet.col[0];
+                    idArray[x * 2, y * 2 + 1] = pixelSet.col[1];
+                    idArray[x * 2 + 1, y * 2] = pixelSet.col[2];
+                    idArray[x * 2 + 1, y * 2 + 1] = pixelSet.col[3];
+                }
+            }
+            for (int y = 0; y < height * 2; y++)
+            {
+                for (int x = 0; x < width * 2; x++)
+                {
+                    strOut += "," + idArray[x, y].ToString();
+                }
             }
         }
         Debug.Log(strOut);
-    }
-
-    void makePixel(float offsetX, float offsetY, int x, int y, float xp, float yp, float pixelSize, Color color)
-    {
-        GameObject pixel = Instantiate(MainManager.pixel, transform, this.gameObject) as GameObject;
-        pixel.GetComponent<RectTransform>().anchoredPosition = new Vector2(offsetX + (x+xp/2) * pixelSize, offsetY + (y+yp/2) * pixelSize);
-        pixel.GetComponent<RectTransform>().sizeDelta = new Vector2(pixelSize/2, pixelSize/2);
-        pixel.GetComponent<Image>().color = color;
+        Debug.Log(MainManager.exportPath);
+        File.WriteAllText(MainManager.exportPath, strOut);
     }
 }

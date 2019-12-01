@@ -68,6 +68,7 @@
     <Compile Include="Assets\Scripts\OriginalManager.cs" />
     <Compile Include="Assets\Scripts\ResultManager.cs" />
     <Compile Include="Assets\Scripts\ResultTwoManager.cs" />
+    <None Include="Assets\export.txt" />
     <Reference Include="Unity.Timeline.Editor">
       <HintPath>C:/Asset/ProjectFile/Unity's/PixelConvert/Library/ScriptAssemblies/Unity.Timeline.Editor.dll</HintPath>
     </Reference>
