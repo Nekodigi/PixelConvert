@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using System.IO;
+using System;
 
 public class ResultManager : MonoBehaviour
 {
-    public bool enable4cdiff;
+    public bool enableFloydSteinberg;
     Texture2D tex;
-    Color[] colorSet;
     Image image;
+    Color[] colorSet;
     // Start is called before the first frame update
     void Start()
     {
@@ -23,39 +24,55 @@ public class ResultManager : MonoBehaviour
     }
 
     public void DrawImage()
-    {
+    {   
         int width = MainManager.width;
         int height = MainManager.height;
         colorSet = MainManager.colorSet;
-        tex = new Texture2D(width*2, height*2, TextureFormat.RGBA32, false);
+        int tLen = MainManager.frames[MainManager.selectFrame].colors.Length;
+        Color[] thisFrameColors = new Color[tLen];
+        Array.Copy(MainManager.frames[MainManager.selectFrame].colors, thisFrameColors, tLen);
+        tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
         tex.filterMode = FilterMode.Point;
-        for (int y = 0; y < height; y++)
+        if (enableFloydSteinberg)
         {
-            for (int x = 0; x < width; x++)
+            for (int y = 0; y < height - 1; y++)
             {
-                PixelSet pixelSet = new PixelSet();
-                if (enable4cdiff)
+                for (int x = 1; x < width - 1; x++)
                 {
-                    pixelSet = MainManager.FourCdiff(MainManager.frames[MainManager.selectFrame].colors[y * MainManager.width + x]);
+                    Color originalCol = constrain(thisFrameColors[y * MainManager.width + x]);
+                    Color newCol = colorSet[MainManager.FindNearColor(originalCol)];
+                    thisFrameColors[y * MainManager.width + x] = newCol;
+                    Color diffCol = originalCol - newCol;
+                    thisFrameColors[y * MainManager.width + x + 1] += diffCol * 7.0f / 16.0f;
+                    thisFrameColors[(y + 1) * MainManager.width + x - 1] += diffCol * 3.0f / 16.0f;
+                    thisFrameColors[(y + 1) * MainManager.width + x] += diffCol * 5.0f / 16.0f;
+                    thisFrameColors[(y + 1) * MainManager.width + x + 1] += diffCol * 1.0f / 16.0f;
+                    tex.SetPixel(x, y, newCol);
                 }
-                else
+            }
+        }
+        else
+        {
+            for (int y = 0; y < height - 1; y++)
+            {
+                for (int x = 1; x < width - 1; x++)
                 {
-                    pixelSet = MainManager.FindBetterColor(MainManager.frames[MainManager.selectFrame].colors[y * MainManager.width + x]);
+                    tex.SetPixel(x, y, colorSet[MainManager.FindNearColor(thisFrameColors[y * MainManager.width + x])]);
+
                 }
-                tex.SetPixel(x * 2, y * 2, colorSet[pixelSet.col[0]]);
-                set4pixel(x, y, pixelSet);
             }
         }
         tex.Apply();
+        if(image == null)
+        {
+            image = GetComponent<Image>();
+        }
         image.sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), Vector2.zero);
     }
 
-    public void set4pixel(int x, int y, PixelSet pixelSet)
+    public Color constrain(Color color)
     {
-        tex.SetPixel(x * 2, y * 2, colorSet[pixelSet.col[0]]);
-        tex.SetPixel(x * 2 + 1, y * 2, colorSet[pixelSet.col[1]]);
-        tex.SetPixel(x * 2, y * 2 + 1, colorSet[pixelSet.col[2]]);
-        tex.SetPixel(x * 2 + 1, y * 2 + 1, colorSet[pixelSet.col[3]]);
+        return new Color(Mathf.Clamp(color.r, 0, 1), Mathf.Clamp(color.g, 0, 1), Mathf.Clamp(color.b, 0, 1), 1);
     }
 
     public void export()
@@ -65,34 +82,43 @@ public class ResultManager : MonoBehaviour
         int frame = MainManager.frame;
         colorSet = MainManager.colorSet;
         int[,] idArray = new int[width * 2, height * 2];
-        string strOut = (width * 2).ToString() + "," + (height * 2).ToString() + "," + frame.ToString();
-        Debug.Log("Exporting"+width);
-        for (int f = 0; f < frame; f++)
+        string strOut = (width).ToString() + "," + (height).ToString() + "," + frame.ToString();
+        Debug.Log("Exporting" + width);
+        if (enableFloydSteinberg)
         {
-            for (int y = 0; y < height; y++)
+            for (int f = 0; f < frame; f++)
             {
-                for (int x = 0; x < width; x++)
+                int tLen = MainManager.frames[f].colors.Length;
+                Color[] thisFrameColors = new Color[tLen];
+                Array.Copy(MainManager.frames[f].colors, thisFrameColors, tLen);
+                for (int y = 0; y < height - 1; y++)
                 {
-                    PixelSet pixelSet = new PixelSet();
-                    if (enable4cdiff)
+                    for (int x = 1; x < width - 1; x++)
                     {
-                        pixelSet = MainManager.FourCdiff(MainManager.frames[f].colors[y * MainManager.width + x]);
+                        Color originalCol = constrain(thisFrameColors[y * MainManager.width + x]);
+                        Color newCol = colorSet[MainManager.FindNearColor(originalCol)];
+                        thisFrameColors[y * MainManager.width + x] = newCol;
+                        Color diffCol = originalCol - newCol;
+                        thisFrameColors[y * MainManager.width + x + 1] += diffCol * 7.0f / 16.0f;
+                        thisFrameColors[(y + 1) * MainManager.width + x - 1] += diffCol * 3.0f / 16.0f;
+                        thisFrameColors[(y + 1) * MainManager.width + x] += diffCol * 5.0f / 16.0f;
+                        thisFrameColors[(y + 1) * MainManager.width + x + 1] += diffCol * 1.0f / 16.0f;
+                        tex.SetPixel(x, y, newCol);
+                        strOut += "," + MainManager.FindNearColor(originalCol).ToString();
                     }
-                    else
-                    {
-                        pixelSet = MainManager.FindBetterColor(MainManager.frames[f].colors[y * MainManager.width + x]);
-                    }
-                    idArray[x * 2, y * 2] = pixelSet.col[0];
-                    idArray[x * 2, y * 2 + 1] = pixelSet.col[1];
-                    idArray[x * 2 + 1, y * 2] = pixelSet.col[2];
-                    idArray[x * 2 + 1, y * 2 + 1] = pixelSet.col[3];
                 }
             }
-            for (int y = 0; y < height * 2; y++)
+        }
+        else
+        {
+            for (int f = 0; f < frame; f++)
             {
-                for (int x = 0; x < width * 2; x++)
+                for (int y = 0; y < height; y++)
                 {
-                    strOut += "," + idArray[x, y].ToString();
+                    for (int x = 0; x < width; x++)
+                    {
+                        strOut += "," + MainManager.FindNearColor(MainManager.frames[f].colors[y * width + x]).ToString();
+                    }
                 }
             }
         }

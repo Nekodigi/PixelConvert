@@ -10,8 +10,9 @@ public class MainManager : MonoBehaviourCustom
 {
     public float whiteOfset;
     public bool testMode;
-    public bool enableR1;//
-    public bool enableR2;//
+    public bool useLowspeedModel;//
+    public bool useSimpleModel;//
+    public bool useFloydSteinberg;
     public bool use4cdiff;
     public static int colorCount = 16;
     public int inWidth;
@@ -35,9 +36,9 @@ public class MainManager : MonoBehaviourCustom
     Image[,] colorSourcesImg = new Image[2,4];
     Image[] resultImg = new Image[3];
     OriginalManager originalManager;
-    ResultManager[] resultManager = new ResultManager[2];
-    ResultTwoManager resultTwoManager;
-
+    Result4Manager[] result4Manager = new Result4Manager[2];
+    ResultManager resultManager;
+    ResultManager floyedManager;
 
     // Start is called before the first frame update
     void Start()
@@ -124,7 +125,7 @@ public class MainManager : MonoBehaviourCustom
         canvasTrans = GameObject.Find("Canvas").transform;
         colorSet = colorPreset;
         exportPath = inExportPath;
-        if (enableR1)
+        if (useLowspeedModel)
         {
             for (int a = 0; a < colorCount; a++)
             {
@@ -164,19 +165,21 @@ public class MainManager : MonoBehaviourCustom
             originalManager.DrawImage();
             if (use4cdiff)
             {
-                resultManager[0] = canvasTrans.Find("Result0").GetComponent<ResultManager>();
+                result4Manager[0] = canvasTrans.Find("Result0").GetComponent<Result4Manager>();
                 //StartCoroutine(DelayFlameEnd(() => { resultManager.DrawImage(); }));
             }
-            if (enableR1)
+            if (useLowspeedModel)
             {
-                resultManager[1] = canvasTrans.Find("Result1").GetComponent<ResultManager>();
+                result4Manager[1] = canvasTrans.Find("Result2").GetComponent<Result4Manager>();
                 //StartCoroutine(DelayFlameEnd(() => { resultManager.DrawImage(); }));
             }
-            resultTwoManager = canvasTrans.Find("Result2").GetComponent<ResultTwoManager>();
-            resultTwoManager.DrawImage();
+            floyedManager = canvasTrans.Find("Result1").GetComponent<ResultManager>();
+            floyedManager.DrawImage();
+            resultManager = canvasTrans.Find("Result3").GetComponent<ResultManager>();
+            resultManager.DrawImage();
 
         }
-        if (testMode)
+        else
         {
             requestImg = canvasTrans.Find("Request").GetComponent<Image>();
             for (int n = 0; n < 2; n++)
@@ -253,29 +256,33 @@ public class MainManager : MonoBehaviourCustom
                 selectFrame = 0;
             }
             originalManager.DrawImage();
-            resultTwoManager.DrawImage();
+            resultManager.DrawImage();
         }
-        if (enableR1 && Input.GetKeyDown(KeyCode.R))
+        if (useLowspeedModel && Input.GetKeyDown(KeyCode.R))
         {
-            resultManager[1].DrawImage();
+            result4Manager[1].DrawImage();
         }
         if (use4cdiff && Input.GetKeyDown(KeyCode.R))
         {
-            resultManager[0].DrawImage();
+            result4Manager[0].DrawImage();
         }
         if (Input.GetKeyDown(KeyCode.E))
         {
-            if (use4cdiff)
+            if (useFloydSteinberg)
             {
-                resultManager[0].export();
+                floyedManager.export();
             }
-            else if (enableR1)
+            else if (use4cdiff)
             {
-                resultManager[1].export();
+                result4Manager[0].export();
             }
-            else if (enableR2)
+            else if (useLowspeedModel)
             {
-                resultTwoManager.export();
+                result4Manager[1].export();
+            }
+            else if (useSimpleModel)
+            {
+                resultManager.export();
             }
         }
     }
